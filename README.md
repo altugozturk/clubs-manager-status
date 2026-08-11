@@ -12,7 +12,7 @@ The repository contains no application code, customer data, credentials, or priv
 ## Coverage
 
 - Clubs Manager public website
-- Platform entry and canonical tenant route
+- Platform entry and Wazzap tenant wildcard hostname
 - Wazzap eFC standalone site
 - Discord interaction endpoint reachability and signature rejection
 

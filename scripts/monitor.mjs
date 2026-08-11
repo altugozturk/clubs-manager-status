@@ -22,11 +22,11 @@ const checks = [
   {
     id: "tenant",
     name: "Tenant club pages",
-    detail: "Canonical Wazzap tenant route",
+    detail: "Wazzap tenant wildcard hostname",
     method: "GET",
-    url: "https://app.clubsmanager.xyz/clubs/wazzap-efc",
+    url: "https://wazzap-efc.clubsmanager.xyz/",
     expectedStatus: 200,
-    marker: "Wazzap eFC",
+    marker: "<title>Wazzap eFC — Club home · Clubs Manager</title>",
   },
   {
     id: "wazzap",

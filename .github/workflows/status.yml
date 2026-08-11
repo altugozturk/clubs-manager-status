@@ -16,7 +16,7 @@ on:
         required: false
         type: choice
         options:
-          - ""
+          - none
           - website
           - platform
           - tenant
@@ -47,7 +47,7 @@ jobs:
       - name: Run production checks
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          MONITOR_FORCE_FAILURE: ${{ inputs.force_failure || '' }}
+          MONITOR_FORCE_FAILURE: ${{ inputs.force_failure || 'none' }}
         run: node scripts/monitor.mjs
 
       - name: Configure GitHub Pages

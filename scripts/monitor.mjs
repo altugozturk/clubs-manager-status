@@ -17,7 +17,7 @@ const checks = [
     method: "GET",
     url: "https://app.clubsmanager.xyz/",
     expectedStatus: 200,
-    marker: "Clubs Manager",
+    marker: "Sign in with Discord to manage your club.",
   },
   {
     id: "tenant",

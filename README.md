@@ -20,4 +20,4 @@ The Discord check intentionally sends an unsigned request and expects rejection.
 
 ## Controlled incident test
 
-Run **Monitor and publish status** manually and choose a monitor ID under `force_failure`. The workflow opens an incident and publishes it. Run it again with the blank option to verify recovery and automatic issue closure.
+Run **Monitor and publish status** manually and choose a monitor ID under `force_failure`. The workflow opens an incident and publishes it. Run it again with `none` to verify recovery and automatic issue closure.

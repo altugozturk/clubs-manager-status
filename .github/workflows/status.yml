@@ -1,0 +1,63 @@
+name: Monitor and publish status
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/status.yml
+      - scripts/monitor.mjs
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      force_failure:
+        description: "Monitor ID to fail for a controlled incident test"
+        required: false
+        type: choice
+        options:
+          - ""
+          - website
+          - platform
+          - tenant
+          - wazzap
+          - discord-guard
+
+permissions:
+  contents: read
+  issues: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: clubs-manager-status
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    name: Check services and publish
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out status configuration
+        uses: actions/checkout@v4
+
+      - name: Run production checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MONITOR_FORCE_FAILURE: ${{ inputs.force_failure || '' }}
+        run: node scripts/monitor.mjs
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload status page
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish status page
+        id: deployment
+        uses: actions/deploy-pages@v4

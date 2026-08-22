@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { validateResponseBody } from "./response-body.mjs";
 import { validateWorkerHealthPayload } from "./worker-health.mjs";
 
 const checks = [
@@ -28,6 +29,7 @@ const checks = [
     url: "https://wazzap-efc.clubsmanager.xyz/",
     expectedStatus: 200,
     marker: "<title>Wazzap eFC — Club home · Clubs Manager</title>",
+    forbiddenMarkers: ["Feed unavailable", "Squad unavailable"],
   },
   {
     id: "wazzap",
@@ -129,8 +131,7 @@ async function runCheck(check) {
           contentType: response.headers.get("content-type") ?? "",
         })
       : {
-          ok: body.includes(check.marker),
-          reason: "Expected response marker was absent",
+          ...validateResponseBody(check, body),
         };
 
     return {

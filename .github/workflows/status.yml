@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - .github/workflows/status.yml
-      - scripts/monitor.mjs
+      - scripts/**
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -22,6 +22,7 @@ on:
           - tenant
           - wazzap
           - discord-guard
+          - discord-worker
 
 permissions:
   contents: read
@@ -48,7 +49,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MONITOR_FORCE_FAILURE: ${{ inputs.force_failure || 'none' }}
-        run: node scripts/monitor.mjs
+        run: |
+          node --test scripts/*.test.mjs
+          node scripts/monitor.mjs
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { validateWorkerHealthPayload } from "./worker-health.mjs";
 
 const checks = [
   {
@@ -46,6 +47,15 @@ const checks = [
     expectedStatus: 401,
     marker: "Invalid request signature.",
     body: "{}",
+  },
+  {
+    id: "discord-worker",
+    name: "Discord worker and delivery queues",
+    detail: "Gateway, control plane, outbox, and durable delivery processors",
+    method: "GET",
+    url: "https://discord-worker-production-0ecb.up.railway.app/healthz",
+    expectedStatus: 200,
+    validateResponse: validateWorkerHealthPayload,
   },
 ];
 
@@ -113,17 +123,25 @@ async function runCheck(check) {
     });
     const body = await response.text();
     const statusMatches = response.status === check.expectedStatus;
-    const markerMatches = body.includes(check.marker);
+    const validation = check.validateResponse
+      ? check.validateResponse({
+          bodyText: body,
+          contentType: response.headers.get("content-type") ?? "",
+        })
+      : {
+          ok: body.includes(check.marker),
+          reason: "Expected response marker was absent",
+        };
 
     return {
       ...check,
-      ok: statusMatches && markerMatches,
+      ok: statusMatches && validation.ok,
       status: response.status,
       durationMs: Math.round(performance.now() - startedAt),
       reason: statusMatches
-        ? markerMatches
+        ? validation.ok
           ? null
-          : "Expected response marker was absent"
+          : validation.reason
         : `Expected HTTP ${check.expectedStatus}, received ${response.status}`,
     };
   } catch (error) {
@@ -284,7 +302,7 @@ function renderHtml(results, incidents) {
         <h2>Incident history</h2>
         <ul>${incidentRows}</ul>
       </section>
-      <p class="note"><strong>Coverage note.</strong> The Discord guard check proves that the interaction endpoint is reachable and rejects unsigned requests. Only Discord can produce a genuine signed interaction, so this check does not claim full command execution.</p>
+      <p class="note"><strong>Coverage note.</strong> The Discord guard check proves that the interaction endpoint is reachable and rejects unsigned requests; only Discord can produce a genuine signed interaction. The worker check reads a strict aggregate health schema for the Gateway, control plane, outbox, and durable delivery queues. It never reads messages, customer data, credentials, or private configuration.</p>
       <footer>Checks run every five minutes from GitHub Actions. <a href="https://github.com/${escapeHtml(repository)}">View monitor source and incidents</a>.</footer>
     </main>
   </body>

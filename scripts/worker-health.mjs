@@ -1,7 +1,7 @@
 const maxPayloadBytes = 32_768;
 
 const deliveryHealthKeys = ["lastErrorAt", "lastSuccessAt", "ready"];
-const topLevelKeys = [
+const legacyTopLevelKeys = [
   "controlPlane",
   "cupDelivery",
   "healthy",
@@ -13,6 +13,10 @@ const topLevelKeys = [
   "roleSync",
   "sessionReminders",
   "shards",
+];
+const decisionTopLevelKeys = [
+  ...legacyTopLevelKeys,
+  "recruitmentDecisionDelivery",
 ];
 
 function isRecord(value) {
@@ -59,7 +63,14 @@ export function validateWorkerHealthPayload({ bodyText, contentType }) {
     return { ok: false, reason: "Worker health response contained invalid JSON" };
   }
 
-  if (!hasExactKeys(payload, topLevelKeys)) {
+  if (!isRecord(payload)) {
+    return { ok: false, reason: "Worker health response returned an unexpected top-level schema" };
+  }
+  const hasDecisionDelivery = Object.hasOwn(payload, "recruitmentDecisionDelivery");
+  const expectedTopLevelKeys = hasDecisionDelivery
+    ? decisionTopLevelKeys
+    : legacyTopLevelKeys;
+  if (!hasExactKeys(payload, expectedTopLevelKeys)) {
     return { ok: false, reason: "Worker health response returned an unexpected top-level schema" };
   }
   if (typeof payload.healthy !== "boolean") {
@@ -100,6 +111,22 @@ export function validateWorkerHealthPayload({ bodyText, contentType }) {
     },
   );
   if (recruitmentReason) return { ok: false, reason: recruitmentReason };
+
+  if (hasDecisionDelivery) {
+    if (!hasExactKeys(payload.recruitmentDecisionDelivery, [...deliveryHealthKeys, "enabled"]) ||
+        typeof payload.recruitmentDecisionDelivery.enabled !== "boolean") {
+      return { ok: false, reason: "recruitmentDecisionDelivery returned an unexpected health schema" };
+    }
+    const decisionReason = validateDeliveryHealth(
+      "recruitmentDecisionDelivery",
+      {
+        lastErrorAt: payload.recruitmentDecisionDelivery.lastErrorAt,
+        lastSuccessAt: payload.recruitmentDecisionDelivery.lastSuccessAt,
+        ready: payload.recruitmentDecisionDelivery.ready,
+      },
+    );
+    if (decisionReason) return { ok: false, reason: decisionReason };
+  }
 
   if (!hasExactKeys(payload.outbox, ["healthy", "oldestPendingAt", "pending", "ready"]) ||
       typeof payload.outbox.healthy !== "boolean" ||
@@ -144,6 +171,12 @@ export function validateWorkerHealthPayload({ bodyText, contentType }) {
   ];
   if (payload.recruitmentDelivery.enabled) {
     requiredReady.push(payload.recruitmentDelivery.ready);
+    if (hasDecisionDelivery) {
+      requiredReady.push(
+        payload.recruitmentDecisionDelivery.enabled,
+        payload.recruitmentDecisionDelivery.ready,
+      );
+    }
   }
   if (!payload.healthy || requiredReady.some((ready) => !ready)) {
     return { ok: false, reason: "Worker or durable queue health was not ready" };

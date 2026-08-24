@@ -19,7 +19,7 @@ The repository contains no application code, customer data, credentials, or priv
 
 The Discord check intentionally sends an unsigned request and expects rejection. It proves endpoint reachability and the signature guard, not full signed command execution.
 
-The worker check reads a strict, size-bounded aggregate health response from Railway. It verifies the worker, Discord Gateway, control plane, outbox, Clubs Cup, session reminder, operations, alert, recruitment (when enabled), role-sync, and reliability-scheduler processors. Unexpected fields fail the check; monitor output never includes response bodies, customer data, or secrets.
+The worker check reads a strict, size-bounded aggregate health response from Railway. It verifies the worker, Discord Gateway, control plane, outbox, Clubs Cup, session reminder, operations, alert, role-sync, reliability scheduler, and both recruitment-delivery processors. Recruitment and decision delivery must both be present, enabled, and ready. Unexpected fields fail the check; monitor output never includes response bodies, customer data, or secrets.
 
 ## Controlled incident test
 

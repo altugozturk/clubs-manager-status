@@ -23,8 +23,11 @@ function validPayload() {
     },
     recruitmentDelivery: {
       ...ready,
-      enabled: false,
-      ready: false,
+      enabled: true,
+    },
+    recruitmentDecisionDelivery: {
+      ...ready,
+      enabled: true,
     },
     reliabilityScheduler: {
       lastCompletedAt: "2026-08-22T19:00:00.000Z",
@@ -46,19 +49,6 @@ function validPayload() {
   };
 }
 
-function validDecisionPayload() {
-  const payload = validPayload();
-  payload.recruitmentDelivery = {
-    ...ready,
-    enabled: true,
-  };
-  payload.recruitmentDecisionDelivery = {
-    ...ready,
-    enabled: true,
-  };
-  return payload;
-}
-
 function validate(payload) {
   return validateWorkerHealthPayload({
     bodyText: JSON.stringify(payload),
@@ -66,34 +56,44 @@ function validate(payload) {
   });
 }
 
-test("accepts the old production schema while recruitment delivery is intentionally disabled", () => {
+test("accepts the strict production schema when both recruitment processors are enabled and ready", () => {
   assert.deepEqual(validate(validPayload()), { ok: true, reason: null });
 });
 
-test("accepts the new production schema when both recruitment processors are enabled and ready", () => {
-  assert.deepEqual(validate(validDecisionPayload()), { ok: true, reason: null });
-});
-
-test("accepts the old production schema when recruitment delivery is enabled", () => {
+test("rejects a missing decision-delivery processor", () => {
   const payload = validPayload();
-  payload.recruitmentDelivery = {
-    ...ready,
-    enabled: true,
-  };
-  assert.deepEqual(validate(payload), { ok: true, reason: null });
-});
-
-test("rejects a disabled decision processor while recruitment delivery is enabled", () => {
-  const payload = validDecisionPayload();
-  payload.recruitmentDecisionDelivery.enabled = false;
+  delete payload.recruitmentDecisionDelivery;
   assert.deepEqual(validate(payload), {
     ok: false,
-    reason: "Worker or durable queue health was not ready",
+    reason: "Worker health response returned an unexpected top-level schema",
   });
 });
 
+for (const [name, field] of [
+  ["recruitment", "recruitmentDelivery"],
+  ["decision", "recruitmentDecisionDelivery"],
+]) {
+  test(`rejects a disabled ${name} processor`, () => {
+    const payload = validPayload();
+    payload[field].enabled = false;
+    assert.deepEqual(validate(payload), {
+      ok: false,
+      reason: "Worker or durable queue health was not ready",
+    });
+  });
+
+  test(`rejects an unready ${name} processor`, () => {
+    const payload = validPayload();
+    payload[field].ready = false;
+    assert.deepEqual(validate(payload), {
+      ok: false,
+      reason: "Worker or durable queue health was not ready",
+    });
+  });
+}
+
 test("rejects malformed decision-delivery health fields", () => {
-  const payload = validDecisionPayload();
+  const payload = validPayload();
   payload.recruitmentDecisionDelivery.lastErrorAt = 500;
   assert.deepEqual(validate(payload), {
     ok: false,
@@ -102,7 +102,7 @@ test("rejects malformed decision-delivery health fields", () => {
 });
 
 test("rejects a partial decision-delivery schema", () => {
-  const payload = validDecisionPayload();
+  const payload = validPayload();
   delete payload.recruitmentDecisionDelivery.lastSuccessAt;
   assert.deepEqual(validate(payload), {
     ok: false,
@@ -111,8 +111,8 @@ test("rejects a partial decision-delivery schema", () => {
 });
 
 test("rejects unexpected decision-delivery fields", () => {
-  const payload = validDecisionPayload();
-  payload.recruitmentDecisionDelivery.deliveryIds = [];
+  const payload = validPayload();
+  payload.recruitmentDecisionDelivery.applicantEmail = "must-not-be-accepted@example.invalid";
   assert.deepEqual(validate(payload), {
     ok: false,
     reason: "recruitmentDecisionDelivery returned an unexpected health schema",
